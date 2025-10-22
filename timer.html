@@ -1,6 +1,4 @@
 <!doctype html>
-<html lang="fr">
-<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Timer</title>
 <style>
@@ -16,135 +14,99 @@
   .time{ font-size:88px; letter-spacing:1px; line-height:1; font-weight:800 }
 </style>
 
-<body>
-  <div class="wrap" id="wrap">
-    <div class="phase" id="phase">Prépare toi pour l'exercice</div>
-    <div class="time" id="time">00:00</div>
-  </div>
+<div class="wrap">
+  <div class="phase" id="phase">Prépare toi pour l'exercice</div>
+  <div class="time" id="time">00:00</div>
+</div>
 
-  <script>
-    // --- Params envoyés par Glide ---
-    const q = new URLSearchParams(location.search);
-    const prep = Math.max(0, +q.get('prep')||0);   // secondes de préparation
-    const dur  = Math.max(0, +q.get('dur')||0);    // secondes de travail
-    const startStr = q.get('start');
-    const start = startStr ? new Date(startStr).getTime() : Date.now();
+<script>
+  // --- lecture des paramètres envoyés par Glide ---
+  const q = new URLSearchParams(location.search);
+  const prep = Math.max(0, +q.get('prep')||0);     // Décompte (US)
+  const dur  = Math.max(0, +q.get('dur')||0);      // Total Sec (US)
+  const startStr = q.get('start');
+  const start = startStr ? new Date(startStr).getTime() : Date.now();
 
-    const phaseEl = document.getElementById('phase');
-    const timeEl  = document.getElementById('time');
+  const phaseEl = document.getElementById('phase');
+  const timeEl  = document.getElementById('time');
 
-    // --- Utils ---
-    const fmt = (s)=>{
-      s = Math.max(0, Math.floor(s));
-      const m = Math.floor(s/60).toString().padStart(2,'0');
-      const sec = (s%60).toString().padStart(2,'0');
-      return `${m}:${sec}`;
-    };
+  // --- utilitaires ---
+  const fmt = (s)=>{
+    s = Math.max(0, Math.floor(s));
+    const m = Math.floor(s/60).toString().padStart(2,'0');
+    const sec = (s%60).toString().padStart(2,'0');
+    return `${m}:${sec}`;
+  };
 
-    // Audio utils
-    const shortBeep = (freq=1200, dur=120, vol=0.12)=>{ // même son que travail
-      try{
-        const C = window.AudioContext||window.webkitAudioContext;
-        const ctx = new C();
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.connect(g); g.connect(ctx.destination);
-        o.type='sine'; o.frequency.value=freq; g.gain.value=vol;
-        o.start(); setTimeout(()=>{o.stop(); ctx.close();}, dur);
-      }catch(e){}
-    };
-    const longBeep = (freq=880, dur=420, vol=0.2)=>{    // même son que fin travail
-      try{
-        const C = window.AudioContext||window.webkitAudioContext;
-        const ctx = new C();
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.connect(g); g.connect(ctx.destination);
-        o.type='sine'; o.frequency.value=freq; g.gain.value=vol;
-        o.start(); setTimeout(()=>{o.stop(); ctx.close();}, dur);
-      }catch(e){}
-    };
+  // petit beep court
+  const beep = (freq=880, dur=180, vol=0.12)=>{
+    try{
+      const Ctx = window.AudioContext||window.webkitAudioContext;
+      const ctx = new Ctx();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine'; o.frequency.value=freq; g.gain.value=vol;
+      o.start(); setTimeout(()=>{o.stop(); ctx.close();}, dur);
+    }catch(e){}
+  };
 
-    // états pour ne biper qu'une fois par seconde affichée
-    let lastPrepDisplay = null;
-    let lastRunDisplay  = null;
-    let endLongBeepDone = false;
-    let stopped = false; // pour arrêter le tick quand on efface la page
+  // pour ne biper qu'une fois par seconde restante
+  let lastPrepSec = null;
+  let lastRunSec  = null;
+  let doneBeeped  = false;
 
-    const renderAndMaybeBeep = ()=>{
-      const now = Date.now();
-      const elapsed = (now - start)/1000;
+  const tick = ()=>{
+    const now = Date.now();
+    const elapsed = (now - start)/1000;
 
-      const prepRemain = Math.max(0, prep - elapsed);
-      const runRemain  = Math.max(0, prep + dur - elapsed);
+    const prepRemain = Math.max(0, prep - elapsed);
+    const runRemain  = Math.max(0, prep + dur - elapsed);
 
-      // Phase Préparation
-      if (prep > 0 && prepRemain > 0) {
-        phaseEl.textContent = "Prépare toi pour l'exercice";
-        const disp = Math.floor(prepRemain);     // 3,2,1,0
-        timeEl.textContent = fmt(prepRemain);
+    // PHASE PRÉPA
+    if (prep > 0 && prepRemain > 0) {
+      phaseEl.textContent = "Prépare toi pour l'exercice";
+      timeEl.textContent  = fmt(prepRemain);
 
-        if (disp !== lastPrepDisplay) {
-          if (disp === 3 || disp === 2 || disp === 1) {
-            shortBeep(1200); if (navigator.vibrate) navigator.vibrate(50);
-          }
-          if (disp === 0) { // bip long sur 0
-            longBeep(880, 420, 0.2);
-            if (navigator.vibrate) navigator.vibrate([100,60,120]);
-          }
-          lastPrepDisplay = disp;
-        }
-        return;
+      // bips à 3, 2, 1 secondes
+      const s = Math.ceil(prepRemain); // 3.2s -> 4 ; 2.0 -> 2
+      if (s !== lastPrepSec && (s===3 || s===2 || s===1)) {
+        beep(1000);                      // tonalité prépa
+        if (navigator.vibrate) navigator.vibrate(60);
       }
+      lastPrepSec = s;
+      return;
+    }
 
-      // Phase Travail
-      if (runRemain > 0) {
-        phaseEl.textContent = "C'est parti !";
-        const disp = Math.floor(runRemain);
-        timeEl.textContent = fmt(runRemain);
+    // PHASE RUN (travail)
+    if (runRemain > 0) {
+      phaseEl.textContent = "C'est parti !";
+      timeEl.textContent  = fmt(runRemain);
 
-        if (disp !== lastRunDisplay) {
-          if (disp === 3 || disp === 2 || disp === 1) {
-            shortBeep(1200); if (navigator.vibrate) navigator.vibrate(50);
-          }
-          if (disp === 0) { // bip long sur 0 (fin de travail)
-            longBeep(880, 420, 0.2);
-            if (navigator.vibrate) navigator.vibrate([100,60,120]);
-            endLongBeepDone = true;
-
-            // 👉 Efface la page pour laisser l'UI Glide apparaître dessous
-            setTimeout(()=>{
-              stopped = true;                              // stoppe le tick
-              document.body.innerHTML = "";               // vide la page
-              document.documentElement.style.background = "transparent";
-            }, 200); // petit délai pour laisser son/vibration finir
-          }
-          lastRunDisplay = disp;
-        }
-        return;
+      // bips à 3, 2, 1 secondes avant la fin du run
+      const s = Math.ceil(runRemain);
+      if (s !== lastRunSec && (s===3 || s===2 || s===1)) {
+        beep(1200);                      // tonalité un peu plus haute
+        if (navigator.vibrate) navigator.vibrate(60);
       }
+      lastRunSec = s;
+      return;
+    }
 
-      // Terminé (sécurité si jamais on a raté l'instant 0)
-      phaseEl.textContent = "Terminé";
-      timeEl.textContent  = "00:00";
-      if (!endLongBeepDone) {
-        longBeep(880, 420, 0.2);
-        if (navigator.vibrate) navigator.vibrate([100,60,120]);
-        endLongBeepDone = true;
-        setTimeout(()=>{
-          stopped = true;
-          document.body.innerHTML = "";
-          document.documentElement.style.background = "transparent";
-        }, 200);
-      }
-    };
+    // FIN
+    phaseEl.textContent = "Terminé";
+    timeEl.textContent  = "00:00";
+    if (!doneBeeped) {
+      doneBeeped = true;
+      // bip final + petite vibration
+      beep(880, 250, 0.15);
+      if (navigator.vibrate) navigator.vibrate([80,60,120]);
+    }
+  };
 
-    // --- métronome calé sur la seconde système ---
-    (function tickAligned(){
-      renderAndMaybeBeep();
-      if (stopped) return; // on arrête définitivement après l'effacement
-      const now = Date.now();
-      const msToNext = 1000 - ((now - start) % 1000);
-      setTimeout(tickAligned, Math.max(60, msToNext)); // jamais < 60 ms
-    })();
-  </script>
-</body>
-</html>
+  // premier rendu + tick régulier
+  tick();
+  // on tick toutes les 200 ms pour être bien synchro sur les transitions
+  const iv = setInterval(tick, 200);
+  // par sécurité, arrête l'interval après 2h
+  setTimeout(()=>clearInterval(iv), 2*60*60*1000);
+</script>
