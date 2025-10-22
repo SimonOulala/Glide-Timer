@@ -1,24 +1,3 @@
-<!doctype html>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Timer</title>
-<style>
-  :root{ --bg:#0684CF; --fg:#ffffff; }
-  html,body{height:100%}
-  body{
-    margin:0; background:var(--bg); color:var(--fg);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .wrap{ text-align:center; padding:24px }
-  .phase{ font-size:18px; opacity:.95; margin-bottom:8px; font-weight:600 }
-  .time{ font-size:88px; letter-spacing:1px; line-height:1; font-weight:800 }
-</style>
-
-<div class="wrap">
-  <div class="phase" id="phase">Prépare toi pour l'exercice</div>
-  <div class="time" id="time">00:00</div>
-</div>
-
 <script>
   // --- lecture des paramètres envoyés par Glide ---
   const q = new URLSearchParams(location.search);
@@ -30,7 +9,7 @@
   const phaseEl = document.getElementById('phase');
   const timeEl  = document.getElementById('time');
 
-  // --- utilitaires ---
+  // --- utilitaires d'affichage ---
   const fmt = (s)=>{
     s = Math.max(0, Math.floor(s));
     const m = Math.floor(s/60).toString().padStart(2,'0');
@@ -38,8 +17,8 @@
     return `${m}:${sec}`;
   };
 
-  // petit beep court
-  const beep = (freq=880, dur=180, vol=0.12)=>{
+  // --- générateur de son ---
+  const tone = (freq=880, dur=180, vol=0.12)=>{
     try{
       const Ctx = window.AudioContext||window.webkitAudioContext;
       const ctx = new Ctx();
@@ -49,29 +28,47 @@
       o.start(); setTimeout(()=>{o.stop(); ctx.close();}, dur);
     }catch(e){}
   };
+  const beepShort = (freq)=>tone(freq,140,0.14);   // bip court
+  const beepLong  = (freq)=>tone(freq,420,0.18);   // bip long
 
-  // pour ne biper qu'une fois par seconde restante
+  // --- états pour ne biper qu'une fois ---
   let lastPrepSec = null;
   let lastRunSec  = null;
-  let doneBeeped  = false;
+  let prepDoneBeeped = false;   // long bip sur 0 de prépa
+  let runDoneBeeped  = false;   // long bip sur 0 de run
 
   const tick = ()=>{
     const now = Date.now();
     const elapsed = (now - start)/1000;
 
+    // calculs "restant"
     const prepRemain = Math.max(0, prep - elapsed);
     const runRemain  = Math.max(0, prep + dur - elapsed);
+
+    // 1) LONG BIP exactement à 0 de la PRÉPA (transition vers travail)
+    if (prep > 0 && !prepDoneBeeped && elapsed >= prep) {
+      beepLong(900);                           // long bip prépa
+      if (navigator.vibrate) navigator.vibrate([60,40,120]);
+      prepDoneBeeped = true;
+    }
+
+    // 2) LONG BIP exactement à 0 du RUN (fin de travail)
+    if (dur > 0 && !runDoneBeeped && elapsed >= (prep + dur)) {
+      beepLong(800);                           // long bip fin
+      if (navigator.vibrate) navigator.vibrate([80,60,140]);
+      runDoneBeeped = true;
+    }
 
     // PHASE PRÉPA
     if (prep > 0 && prepRemain > 0) {
       phaseEl.textContent = "Prépare toi pour l'exercice";
       timeEl.textContent  = fmt(prepRemain);
 
-      // bips à 3, 2, 1 secondes
-      const s = Math.ceil(prepRemain); // 3.2s -> 4 ; 2.0 -> 2
+      // bips courts sur 3, 2, 1 secondes restantes (prépa)
+      const s = Math.ceil(prepRemain);
       if (s !== lastPrepSec && (s===3 || s===2 || s===1)) {
-        beep(1000);                      // tonalité prépa
-        if (navigator.vibrate) navigator.vibrate(60);
+        beepShort(1000);
+        if (navigator.vibrate) navigator.vibrate(50);
       }
       lastPrepSec = s;
       return;
@@ -82,31 +79,23 @@
       phaseEl.textContent = "C'est parti !";
       timeEl.textContent  = fmt(runRemain);
 
-      // bips à 3, 2, 1 secondes avant la fin du run
+      // bips courts sur 3, 2, 1 secondes restantes (travail)
       const s = Math.ceil(runRemain);
       if (s !== lastRunSec && (s===3 || s===2 || s===1)) {
-        beep(1200);                      // tonalité un peu plus haute
-        if (navigator.vibrate) navigator.vibrate(60);
+        beepShort(1200);
+        if (navigator.vibrate) navigator.vibrate(50);
       }
       lastRunSec = s;
       return;
     }
 
-    // FIN
+    // FIN (après le long bip déjà joué)
     phaseEl.textContent = "Terminé";
     timeEl.textContent  = "00:00";
-    if (!doneBeeped) {
-      doneBeeped = true;
-      // bip final + petite vibration
-      beep(880, 250, 0.15);
-      if (navigator.vibrate) navigator.vibrate([80,60,120]);
-    }
   };
 
   // premier rendu + tick régulier
   tick();
-  // on tick toutes les 200 ms pour être bien synchro sur les transitions
-  const iv = setInterval(tick, 200);
-  // par sécurité, arrête l'interval après 2h
-  setTimeout(()=>clearInterval(iv), 2*60*60*1000);
+  const iv = setInterval(tick, 200);   // cadence suffisante pour rater aucun palier
+  setTimeout(()=>clearInterval(iv), 2*60*60*1000); // sécurité 2h
 </script>
