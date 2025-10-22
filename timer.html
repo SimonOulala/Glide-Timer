@@ -122,7 +122,12 @@
   };
 
   tick();
-  // tick rapide pour caler pile sur les changements de seconde affichée
-  const iv = setInterval(tick, 200);
-  setTimeout(()=>clearInterval(iv), 2*60*60*1000); // safety 2h
+ // tick aligné sur les secondes réelles (évite le léger décalage sur la prépa)
+(function tickAligned(){
+  tick();
+  const now = Date.now();
+  // délai jusqu'à la prochaine "seconde pleine" depuis le start
+  const msToNext = 1000 - ((now - start) % 1000);
+  setTimeout(tickAligned, Math.max(60, msToNext)); // jamais < 60 ms
+})();
 </script>
