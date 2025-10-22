@@ -10,7 +10,8 @@
     display:flex; align-items:center; justify-content:center;
   }
   .wrap{ text-align:center; padding:24px }
-  .phase{ font-size:22px; opacity:.95; margin-bottom:8px; font-weight:600 }
+  .phase{ font-size:clamp(16px,3.8vw,24px); opacity:.95; margin-bottom:8px; font-weight:600 }
+  .phase.work{ font-size:clamp(22px,6vw,36px); }
   .time{ font-size:88px; letter-spacing:1px; line-height:1; font-weight:800 }
 </style>
 
@@ -74,6 +75,7 @@
     // --- Phase Préparation ---
     if (prep > 0 && prepRemain > 0) {
       phaseEl.textContent = "Prépare toi pour l'exercice";
+      phaseEl.className = "phase";
       const disp = Math.floor(prepRemain);      // ce qui s’affiche (00:03, 00:02, 00:01, 00:00)
       timeEl.textContent = fmt(prepRemain);
 
@@ -93,6 +95,7 @@
     // --- Phase Travail ---
     if (runRemain > 0) {
       phaseEl.textContent = "C'est parti !";
+      phaseEl.className = "phase work";
       const disp = Math.floor(runRemain);
       timeEl.textContent = fmt(runRemain);
 
@@ -112,6 +115,7 @@
 
     // --- Terminé ---
     phaseEl.textContent = "Terminé";
+    phaseEl.className = "phase";
     timeEl.textContent  = "00:00";
     // sécurité si jamais on a raté le bip long final (rare)
     if (!endLongBeepDone) {
