@@ -1,24 +1,3 @@
-<!doctype html>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Timer</title>
-<style>
-  :root{ --bg:#0684CF; --fg:#ffffff; }
-  html,body{height:100%}
-  body{
-    margin:0; background:var(--bg); color:var(--fg);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .wrap{ text-align:center; padding:24px }
-  .phase{ font-size:18px; opacity:.95; margin-bottom:8px; font-weight:600 }
-  .time{ font-size:88px; letter-spacing:1px; line-height:1; font-weight:800 }
-</style>
-
-<div class="wrap">
-  <div class="phase" id="phase">Prépare toi pour l'exercice</div>
-  <div class="time" id="time">00:00</div>
-</div>
-
 <script>
   // --- Params envoyés par Glide ---
   const q = new URLSearchParams(location.search);
@@ -38,6 +17,7 @@
     return `${m}:${sec}`;
   };
 
+  // Audio utils
   const shortBeep = (freq=1000, dur=120, vol=0.12)=>{
     try{
       const C = window.AudioContext||window.webkitAudioContext;
@@ -48,7 +28,7 @@
       o.start(); setTimeout(()=>{o.stop(); ctx.close();}, dur);
     }catch(e){}
   };
-  const longBeep = (freq=880, dur=320, vol=0.16)=>{
+  const longBeep = (freq=880, dur=360, vol=0.18)=>{
     try{
       const C = window.AudioContext||window.webkitAudioContext;
       const ctx = new C();
@@ -59,30 +39,30 @@
     }catch(e){}
   };
 
-  // états pour biper une seule fois par seconde affichée
+  // états pour ne biper qu'une fois par seconde affichée
   let lastPrepDisplay = null;
   let lastRunDisplay  = null;
   let endLongBeepDone = false;
 
-  const tick = ()=>{
+  const renderAndMaybeBeep = ()=>{
     const now = Date.now();
     const elapsed = (now - start)/1000;
 
     const prepRemain = Math.max(0, prep - elapsed);
     const runRemain  = Math.max(0, prep + dur - elapsed);
 
-    // --- Phase Préparation ---
+    // Phase Prépa
     if (prep > 0 && prepRemain > 0) {
       phaseEl.textContent = "Prépare toi pour l'exercice";
-      const disp = Math.floor(prepRemain);      // ce qui s’affiche (00:03, 00:02, 00:01, 00:00)
+      const disp = Math.floor(prepRemain);     // exactement ce qui est affiché
       timeEl.textContent = fmt(prepRemain);
 
       if (disp !== lastPrepDisplay) {
         if (disp === 3 || disp === 2 || disp === 1) {
           shortBeep(1000); if (navigator.vibrate) navigator.vibrate(50);
         }
-        if (disp === 0) {                        // bip long sur 0
-          longBeep(900, 360, 0.18);
+        if (disp === 0) { // bip long sur 0
+          longBeep(900, 420, 0.2);
           if (navigator.vibrate) navigator.vibrate([80,40,80]);
         }
         lastPrepDisplay = disp;
@@ -90,7 +70,7 @@
       return;
     }
 
-    // --- Phase Travail ---
+    // Phase Travail
     if (runRemain > 0) {
       phaseEl.textContent = "C'est parti !";
       const disp = Math.floor(runRemain);
@@ -100,7 +80,7 @@
         if (disp === 3 || disp === 2 || disp === 1) {
           shortBeep(1200); if (navigator.vibrate) navigator.vibrate(50);
         }
-        if (disp === 0) {                        // bip long sur 0 (fin de travail)
+        if (disp === 0) { // bip long sur 0
           longBeep(880, 420, 0.2);
           if (navigator.vibrate) navigator.vibrate([100,60,120]);
           endLongBeepDone = true;
@@ -110,10 +90,9 @@
       return;
     }
 
-    // --- Terminé ---
+    // Terminé
     phaseEl.textContent = "Terminé";
     timeEl.textContent  = "00:00";
-    // sécurité si jamais on a raté le bip long final (rare)
     if (!endLongBeepDone) {
       longBeep(880, 420, 0.2);
       if (navigator.vibrate) navigator.vibrate([100,60,120]);
@@ -121,8 +100,17 @@
     }
   };
 
-  tick();
-  // tick rapide pour caler pile sur les changements de seconde affichée
-  const iv = setInterval(tick, 200);
-  setTimeout(()=>clearInterval(iv), 2*60*60*1000); // safety 2h
+  // --- métronome calé sur la seconde système ---
+  const tickAligned = ()=>{
+    renderAndMaybeBeep();
+    const now = Date.now();
+    // calcule le délai restant jusqu'à la prochaine seconde pleine
+    const msToNextSecond = 1000 - ((now - start) % 1000);
+    setTimeout(tickAligned, Math.max(80, msToNextSecond)); // jamais < 80ms
+  };
+
+  // premier rendu immédiat puis calage exact sur les secondes
+  tickAligned();
+  // sécurité : au bout de 2h, on stoppe les callbacks
+  setTimeout(()=>{ /* noop: navigateur détruira la page bien avant */ }, 2*60*60*1000);
 </script>
