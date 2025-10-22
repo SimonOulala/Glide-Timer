@@ -1,0 +1,63 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timer</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;margin:0;
+       display:flex;align-items:center;justify-content:center;height:100vh}
+  .wrap{text-align:center}
+  .phase{font-size:16px;opacity:.7;margin-bottom:6px}
+  .time{font-size:72px;letter-spacing:1px}
+</style>
+<div class="wrap">
+  <div class="phase" id="phase">Préparation</div>
+  <div class="time" id="time">00:00</div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const prep = Math.max(0, +q.get('prep')||0);
+  const dur  = Math.max(0, +q.get('dur')||0);
+  const startStr = q.get('start');
+  const start = startStr ? new Date(startStr).getTime() : Date.now();
+
+  const phaseEl = document.getElementById('phase');
+  const timeEl  = document.getElementById('time');
+
+  const fmt = (s)=>{
+    s = Math.max(0, Math.floor(s));
+    const m = Math.floor(s/60).toString().padStart(2,'0');
+    const sec = (s%60).toString().padStart(2,'0');
+    return `${m}:${sec}`;
+  };
+
+  let doneBeeped = false;
+  const tick = ()=>{
+    const now = Date.now();
+    const elapsed = (now - start)/1000;
+    const prepRemain = Math.max(0, prep - elapsed);
+    const runRemain  = Math.max(0, prep + dur - elapsed);
+
+    if (prep > 0 && prepRemain > 0) {
+      phaseEl.textContent = 'Préparation';
+      timeEl.textContent  = fmt(prepRemain);
+    } else if (runRemain > 0) {
+      phaseEl.textContent = 'En cours';
+      timeEl.textContent  = fmt(runRemain);
+    } else {
+      phaseEl.textContent = 'Terminé';
+      timeEl.textContent  = '00:00';
+      if (!doneBeeped) {
+        doneBeeped = true;
+        if (navigator.vibrate) navigator.vibrate([80,60,80]);
+        try {
+          const ctx = new (window.AudioContext||window.webkitAudioContext)();
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.type='sine'; o.frequency.value=880; g.gain.value=0.1;
+          o.start(); setTimeout(()=>{o.stop();ctx.close();}, 250);
+        } catch(e){}
+      }
+    }
+  };
+  tick();
+  setInterval(tick, 1000);
+</script>
