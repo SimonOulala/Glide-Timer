@@ -79,10 +79,10 @@
 
       if (disp !== lastPrepDisplay) {
         if (disp === 3 || disp === 2 || disp === 1) {
-          shortBeep(1000); if (navigator.vibrate) navigator.vibrate(50);
+          shortBeep(1200); if (navigator.vibrate) navigator.vibrate(50);
         }
         if (disp === 0) {                        // bip long sur 0
-          longBeep(900, 360, 0.18);
+          longBeep(900, 420, 0.2);
           if (navigator.vibrate) navigator.vibrate([80,40,80]);
         }
         lastPrepDisplay = disp;
