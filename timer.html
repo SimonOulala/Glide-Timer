@@ -27,6 +27,7 @@
   const dur  = Math.max(0, +q.get('dur')||0);    // secondes de travail
   const startStr = q.get('start');
   const start = startStr ? new Date(startStr).getTime() : Date.now();
+  const mode  = (q.get('mode') || 'work');       // <-- 'work' (par défaut) ou 'rest'
 
   const phaseEl = document.getElementById('phase');
   const timeEl  = document.getElementById('time');
@@ -92,10 +93,10 @@
       return;
     }
 
-    // --- Phase Travail ---
+    // --- Phase Travail (ou Récupération si mode=rest) ---
     if (runRemain > 0) {
-      phaseEl.textContent = "C'est parti !";
-      phaseEl.className = "phase work";
+      phaseEl.textContent = (mode === 'rest') ? "Récupération" : "C'est parti !";
+      phaseEl.className   = (mode === 'rest') ? "phase" : "phase work";
       const disp = Math.floor(runRemain);
       timeEl.textContent = fmt(runRemain);
 
@@ -103,7 +104,7 @@
         if (disp === 3 || disp === 2 || disp === 1) {
           shortBeep(1200); if (navigator.vibrate) navigator.vibrate(50);
         }
-        if (disp === 0) {                        // bip long sur 0 (fin de travail)
+        if (disp === 0) {                        // bip long sur 0 (fin de travail/repos)
           longBeep(880, 420, 0.2);
           if (navigator.vibrate) navigator.vibrate([100,60,120]);
           endLongBeepDone = true;
@@ -114,7 +115,7 @@
     }
 
     // --- Terminé ---
-    phaseEl.textContent = "Terminé";
+    phaseEl.textContent = (mode === 'rest') ? "Repos terminé" : "Terminé";
     phaseEl.className = "phase";
     timeEl.textContent  = "00:00";
     // sécurité si jamais on a raté le bip long final (rare)
