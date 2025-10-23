@@ -94,8 +94,6 @@
 
     // --- Phase Travail ---
     if (runRemain > 0) {
-      phaseEl.textContent = (mode === 'rest') ? "Récupération" : "C'est parti !";
-      phaseEl.className   = (mode === 'rest') ? "phase" : "phase work";
       phaseEl.textContent = "C'est parti !";
       phaseEl.className = "phase work";
       const disp = Math.floor(runRemain);
@@ -116,8 +114,6 @@
     }
 
     // --- Terminé ---
-    phaseEl.textContent = (mode === 'rest') ? "Repos terminé" : "Terminé";
-    phaseEl.className   = "phase";
     phaseEl.textContent = "Terminé";
     phaseEl.className = "phase";
     timeEl.textContent  = "00:00";
