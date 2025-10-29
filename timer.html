@@ -25,8 +25,7 @@
   const q = new URLSearchParams(location.search);
   const prep = Math.max(0, +q.get('prep')||0);   // secondes de préparation
   const dur  = Math.max(0, +q.get('dur')||0);    // secondes de travail
-  const startStr = q.get('start');
-  const start = startStr ? new Date(startStr).getTime() : Date.now();
+  const start = Date.now();
   const mode  = (q.get('mode') || 'work');       // <-- 'work' (par défaut) ou 'rest'
 
   const phaseEl = document.getElementById('phase');
