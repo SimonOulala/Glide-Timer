@@ -31,6 +31,35 @@
   const phaseEl = document.getElementById('phase');
   const timeEl  = document.getElementById('time');
 
+  // --- Wake Lock (garder l'écran allumé) ---
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener?.('release', () => { wakeLock = null; });
+    }
+  } catch (e) {
+    console.log('WakeLock error', e);
+  }
+}
+
+// Redemander quand on revient sur l’onglet
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !wakeLock) requestWakeLock();
+});
+
+// Première interaction utilisateur (iOS/Safari)
+window.addEventListener('click', requestWakeLock, { once: true });
+window.addEventListener('touchstart', requestWakeLock, { once: true });
+
+// Tentative immédiate
+requestWakeLock();
+
+// Libération propre
+window.addEventListener('beforeunload', () => { try { wakeLock?.release(); } catch {} });
+
   // --- Utils ---
   const fmt = (s)=>{
     s = Math.max(0, Math.floor(s));
